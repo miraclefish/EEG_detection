@@ -1,0 +1,6 @@
+/.vscode/
+**/.ipynb_checkpoints/
+*.zip
+**/__pycache__/
+**/S-BECT/
+/EEG_VI/癫痫数据/
