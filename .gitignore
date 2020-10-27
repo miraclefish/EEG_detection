@@ -3,4 +3,6 @@
 *.zip
 **/__pycache__/
 **/S-BECT/
+*.edf
+**/NewcsvData/
 /EEG_VI/癫痫数据/
