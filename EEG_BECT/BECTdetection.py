@@ -61,9 +61,10 @@ class BECTdetect(object):
         return pdf
     
     def _triang_spike(self, x):
-        
+        # 模板的尺度根据原始信号的形状做调整
         minx = np.min(x, axis=1)
         maxx = np.max(x, axis=1)
+
         out = np.zeros(x.shape)
         mid_ind = int(self.windows*1/3)
         out[:, :mid_ind] = np.linspace(minx, maxx, mid_ind, axis=1)
@@ -71,42 +72,66 @@ class BECTdetect(object):
         return out
     
     def _pdf_spike(self, x):
+        # 模板的尺度根据原始信号的形状做调整
         minx = np.min(x, axis=1)
         maxx = np.max(x, axis=1)
         
-        pdf = self._template 
+        pdf = self._template
         pdf = (pdf-min(pdf))/(max(pdf)-min(pdf))
         pdf = np.tile(pdf, [x.shape[0], 1])
         out = (pdf.T*(maxx-minx)+minx).T
         return out
     
     def _bect_detection(self):
+
+        # 设定默认的信号分割长度为1000
         detection_length = 1000
+
+        # 等长分割信号
         data = self.data
         N = int(np.ceil(len(data)/detection_length))
+
+        # 先分割前 N-1 段
         datas = np.array_split(data[:-(len(data)-(N-1)*detection_length)], N-1)
+        # 尾部长度不够 detection_length 的 1 段
         rest = len(data)-(N-1)*detection_length
         
+        # 如果 rest 的长度不够一个滑窗 self.window 的长度，就丢掉 rest
         if rest >= self.window:
             datas = datas + [data[-(len(data)-(N-1)*detection_length):]]
-            
+        
+        # 定义滤后信号的存储空间
         filted_data = np.zeros(data.shape)
+
+        # 定义检测出尖波位置的存储空间
         pred_ind = []
         
         i = 0
         for x in datas:
+            # 对 x 滑窗的过程矩阵并行化，详情请参考函数 self._window_slide()
+            # xx 的每一行是一个 x 的滑窗提取，步长为 1
             xx = self._window_slide(x)
+
+            # 对每个滑窗生成一个匹配模板，参考 xx 进行自适应变形，也进行了矩阵并行化。
             if self.template_mode == "pdf":
                 template = self._pdf_spike(xx)
             elif self.tmplate_mode == "triang":
                 template = self._triang_spike(xx)
+
+            # 将 xx 与 template 逐元素相乘，每行求和得到原始信号与模板的内积
+            # 求均值是为了让输出 score 变小一点
             score = np.mean(xx*template, axis=1)
+
+            # 滑窗计算后两端补零到原始长度
             expanded_score = np.hstack([np.zeros(int(self.window/2)), score, np.zeros(self.window-int(self.window/2)-1)])
+
+            # 存储输出结果为滤后信号 filted_data
             if i<len(datas)-1:
                 filted_data[i*x.shape[0]:(i+1)*x.shape[0]] = expanded_score.reshape(-1,1)
             else:
                 filted_data[-(len(datas)-i)*x.shape[0]:] = expanded_score.reshape(-1,1)
 
+            
             outline_ind, flag = self._find_S_points(score)
             # print(i,"-->",flag)
             if len(outline_ind) > 0:
