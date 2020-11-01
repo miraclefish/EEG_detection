@@ -1,9 +1,11 @@
 import os
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.signal import butter
+
 
 class BECTdetect(object):
     
@@ -15,7 +17,6 @@ class BECTdetect(object):
         self.path = filepath
         self.filename = self.path[-14:-4]
         self.data, self.raw_data = self._read_txt()
-        
         
         self.window = S_size
         self.template_mode = template_mode
@@ -59,7 +60,6 @@ class BECTdetect(object):
             pdf = stats.gamma.pdf(x, a=2.2)
             pdf = pdf**2
         return pdf
-    
     def _triang_spike(self, x):
         # 模板的尺度根据原始信号的形状做调整
         minx = np.min(x, axis=1)
@@ -70,7 +70,6 @@ class BECTdetect(object):
         out[:, :mid_ind] = np.linspace(minx, maxx, mid_ind, axis=1)
         out[:, mid_ind:] = np.linspace(maxx, minx, length-mid_ind, axis=1)
         return out
-    
     def _pdf_spike(self, x):
         # 模板的尺度根据原始信号的形状做调整
         minx = np.min(x, axis=1)
@@ -85,7 +84,7 @@ class BECTdetect(object):
     def _bect_detection(self):
 
         # 设定默认的信号分割长度为1000
-        detection_length = 1000
+        detection_length = 5000
 
         # 等长分割信号
         data = self.data
@@ -131,7 +130,7 @@ class BECTdetect(object):
             else:
                 filted_data[-(len(datas)-i)*x.shape[0]:] = expanded_score.reshape(-1,1)
 
-            
+
             outline_ind, flag = self._find_S_points(score)
             # print(i,"-->",flag)
             if len(outline_ind) > 0:

@@ -89,6 +89,7 @@ class EDFreader(object):
         eeg_filted = self._lowpass(HigHz=200, data=eeg_signal)
         ref_filted = self._lowpass(HigHz=200, data=ref_signal)
 
+        # eeg_filted_Av = eeg_filted
         eeg_filted_Av = eeg_filted - np.mean(ref_filted, axis=0, keepdims=True)
 
         filted_data = -eeg_filted_Av
