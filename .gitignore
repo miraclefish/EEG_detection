@@ -4,5 +4,6 @@
 **/__pycache__/
 **/S-BECT/
 *.edf
+*.png
 **/NewcsvData/
 /EEG_VI/癫痫数据/

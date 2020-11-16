@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-from scipy.signal import butter
-
+from scipy.signal import butter, filtfilt
 
 class BECTdetect(object):
     
@@ -24,13 +23,20 @@ class BECTdetect(object):
         if self.template_mode == "pdf":
             self._template = self._get_pdf_template()
         
-        self.pred_ind, self.output = self._bect_detection()
+        self.lowPassData = self._low_pass_filter(HigHz=20, data=self.data)
+        self.output1 = self._adaptive_filter(self.lowPassData)
+        self.output2 = self._adaptive_filter(self.output1)
+        self.pred_ind = self._bect_detection(self.output2)
+
         self.indicator = self.get_indicator()
         
+        self.p = plt.figure(figsize=[15,4])
         self._print_output()
+        
             
     def _read_txt(self):
         raw_data = pd.read_csv(self.path, sep='\t')
+        raw_data = raw_data[0:86500]
         self.s_channel = raw_data.columns[0]
         data = raw_data.values
         if self.print_log:
@@ -80,14 +86,31 @@ class BECTdetect(object):
         pdf = np.tile(pdf, [x.shape[0], 1])
         out = (pdf.T*(maxx-minx)+minx).T
         return out
-    
-    def _bect_detection(self):
+
+    def _window_slide(self, x):
+        stride = 1
+        n = int((len(x)-(self.window-stride))/stride)
+        out = np.zeros((n, self.window))
+        for i in range(self.window-1):
+            out[:,i] = x[i:-(self.window-1-i)].T
+        out = (out.T - np.mean(out, axis=1)).T
+        return out
+
+    def _low_pass_filter(self, HigHz, data):
+        data = np.squeeze(data)
+        hf = HigHz * 2.0 / 1000
+        N = 8
+        b, a = butter(N, hf, "lowpass")
+        filted_data = filtfilt(b, a, data)
+        filted_data = filted_data.reshape(-1, 1)
+        return filted_data
+
+    def _adaptive_filter(self, data):
 
         # 设定默认的信号分割长度为1000
-        detection_length = 5000
+        detection_length = 4000
 
         # 等长分割信号
-        data = self.data
         N = int(np.ceil(len(data)/detection_length))
 
         # 先分割前 N-1 段
@@ -119,7 +142,7 @@ class BECTdetect(object):
 
             # 将 xx 与 template 逐元素相乘，每行求和得到原始信号与模板的内积
             # 求均值是为了让输出 score 变小一点
-            score = np.mean(xx*template, axis=1)
+            score = np.sum(xx*template, axis=1)/xx.shape[1]**2
 
             # 滑窗计算后两端补零到原始长度
             expanded_score = np.hstack([np.zeros(int(self.window/2)), score, np.zeros(self.window-int(self.window/2)-1)])
@@ -130,25 +153,41 @@ class BECTdetect(object):
             else:
                 filted_data[-(len(datas)-i)*x.shape[0]:] = expanded_score.reshape(-1,1)
 
-
-            outline_ind, flag = self._find_S_points(score)
-            # print(i,"-->",flag)
-            if len(outline_ind) > 0:
-                outline_ind += i * detection_length
-                pred_ind = pred_ind + list(outline_ind)
             i += 1
-        pred_ind = np.array(pred_ind)
 
-        return pred_ind, filted_data
+            # outline_ind, flag = self._find_S_points(score)
+            # # print(i,"-->",flag)
+            # if len(outline_ind) > 0:
+            #     outline_ind += i * detection_length
+            #     pred_ind = pred_ind + list(outline_ind)
+            # i += 1
+        # pred_ind = np.array(pred_ind)
+        filted_data[filted_data < 0] = 0
+
+        return filted_data
     
-    def _window_slide(self, x):
-        stride = 1
-        n = int((len(x)-(self.window-stride))/stride)
-        out = np.zeros((n, self.window))
-        for i in range(self.window-1):
-            out[:,i] = x[i:-(self.window-1-i)].T
-        out = (out.T - np.mean(out, axis=1)).T
-        return out
+    def _bect_detection(self, score):
+        dscore = score[1:]-score[:-1]
+        peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]+1
+
+        peak_score = score[peak_ind]
+
+        large_ind = np.where(peak_score > 0.2)[0]
+        ind = peak_ind[large_ind]
+        peak_score = peak_score[large_ind]
+
+
+        # n = self.threshold
+        # mean = np.mean(peak_score)
+        # std = np.std(peak_score)
+        # ind = np.where(abs(peak_score-mean)>n*std)[0]
+        # outline_ind = peak_ind[ind]
+        # ind = np.where(score[outline_ind]>0)[0]
+        # outline_ind = outline_ind[ind]
+        # outline_ind += int(self.window/2)
+
+        pred_ind = ind - int(self.window/2)
+        return pred_ind
     
     def _find_S_points(self, score):
         dscore = score[1:]-score[:-1]
@@ -207,9 +246,9 @@ class BECTdetect(object):
 
     # def get_indicator(self):
     #     split_length = self.pred_ind[1:]-self.pred_ind[:-1]
-    #     long_split_length = split_length[np.where(split_length>=2000)[0]]
+    #     long_split_length = split_length[np.where(split_length>=1500)[0]]
     #     long_split_second = np.floor(long_split_length/1000)
-    #     indicator = 1-(np.sum(long_split_second)*1000/len(self.s_data))
+    #     indicator = 1-(np.sum(long_split_second)*1000/len(self.data))
     #     return indicator
     
     def plot_result(self, slice_ind=None):
@@ -220,20 +259,44 @@ class BECTdetect(object):
                 slice_ind[1] = len(self.data)-1
             size = [slice_ind[0], slice_ind[1]]
         
-        plt.figure(figsize=[15,3])
+        n = 3
+        
         i = 0
+        plt.clf()
+
         i += 1
-        plt.subplot(2,1,i)
+        plt.subplot(n,1,i)
         plt.plot(self.raw_data[self.s_channel][size[0]:size[1]], linewidth="1")
         plt.title("Signal of "+self.s_channel+" channel")
-        
-        i += 1
-        plt.subplot(2,1,i)
-        plt.plot(np.arange(size[0],size[1]),self.output[size[0]:size[1]])
-        plt.title("Detection")
+
         for ind in self.pred_ind:
             if ind>=size[0] and ind<=size[1]:
                 plt.axvline(ind, c="g")
+        
+        i += 1
+        plt.subplot(n,1,i)
+        plt.plot(np.arange(size[0],size[1]),self.output1[size[0]:size[1]],linewidth="1")
+        plt.title("Detection 1")
+
+        for ind in self.pred_ind:
+            if ind>=size[0] and ind<=size[1]:
+                plt.axvline(ind, c="g")
+
+        # i += 1
+        # plt.subplot(n,1,i)
+        # plt.plot(np.arange(size[0],size[1]), self.lowPassData[size[0]:size[1]],linewidth="1")
+        # plt.title("Signal of "+self.s_channel+" channel (Low Pass Filted)")
+
+        i += 1
+        plt.subplot(n,1,i)
+        plt.plot(np.arange(size[0],size[1]), self.output2[size[0]:size[1]],linewidth="1")
+        plt.title("Detection 2")
+
+        for ind in self.pred_ind:
+            if ind>=size[0] and ind<=size[1]:
+                plt.axvline(ind, c="g")
+        
         plt.tight_layout()
+        fig = plt.gcf()
         plt.show()
-        return None
+        return fig
