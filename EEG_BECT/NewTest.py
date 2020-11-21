@@ -14,7 +14,7 @@ indicators = []
 #     indicators.append(bect.indicator)
 #     pass
 
-filepath = os.path.join(path, filelist[25])
+filepath = os.path.join(path, filelist[5])
 bect = BECTdetect(filepath = filepath, S_size=61, threshold=2, print_log=False)
 
 for i in range(int(len(bect.data)/5000)):

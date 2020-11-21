@@ -23,10 +23,9 @@ class BECTdetect(object):
         if self.template_mode == "pdf":
             self._template = self._get_pdf_template()
         
-        self.lowPassData = self._low_pass_filter(HigHz=20, data=self.data)
-        self.output1 = self._adaptive_filter(self.lowPassData)
-        self.output2 = self._adaptive_filter(self.output1)
-        self.pred_ind = self._bect_detection(self.output2)
+        self.bandPassData = self._band_pass_filter(LowHz=0.5, HigHz=40, data=self.data)
+        self.output1 = self._adaptive_filter(self.bandPassData)
+        self.pred_ind = self._bect_detection(self.output1)
 
         self.indicator = self.get_indicator()
         
@@ -96,11 +95,12 @@ class BECTdetect(object):
         out = (out.T - np.mean(out, axis=1)).T
         return out
 
-    def _low_pass_filter(self, HigHz, data):
+    def _band_pass_filter(self, LowHz, HigHz, data):
         data = np.squeeze(data)
         hf = HigHz * 2.0 / 1000
-        N = 8
-        b, a = butter(N, hf, "lowpass")
+        lf = LowHz * 2.0 / 1000
+        N = 2
+        b, a = butter(N, [lf, hf], "bandpass")
         filted_data = filtfilt(b, a, data)
         filted_data = filted_data.reshape(-1, 1)
         return filted_data
@@ -162,7 +162,7 @@ class BECTdetect(object):
             #     pred_ind = pred_ind + list(outline_ind)
             # i += 1
         # pred_ind = np.array(pred_ind)
-        filted_data[filted_data < 0] = 0
+        # filted_data[filted_data < 0] = 0
 
         return filted_data
     
@@ -171,8 +171,9 @@ class BECTdetect(object):
         peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]+1
 
         peak_score = score[peak_ind]
+        peak_score = np.sign(peak_score)*np.log(np.abs(peak_score)+1)
 
-        large_ind = np.where(peak_score > 0.2)[0]
+        large_ind = np.where(peak_score - np.mean(peak_score) > np.std(peak_score)*2)[0]
         ind = peak_ind[large_ind]
         peak_score = peak_score[large_ind]
 
@@ -186,7 +187,7 @@ class BECTdetect(object):
         # outline_ind = outline_ind[ind]
         # outline_ind += int(self.window/2)
 
-        pred_ind = ind - int(self.window/2)
+        pred_ind = ind
         return pred_ind
     
     def _find_S_points(self, score):
@@ -222,34 +223,33 @@ class BECTdetect(object):
                 outline_ind = peak_ind[ind]
                 ind = np.where(score[outline_ind]>0)[0]
                 outline_ind = outline_ind[ind]
-                outline_ind += int(self.window/2)
         return outline_ind, flag
         
-    def get_indicator(self):
-
-        window = 1500
-
-        length = self.data.shape[0]
-        mask = np.zeros(length)
-        mask[self.pred_ind] = 1
-        N = int(length/window)
-        rest = length%window
-        mask = mask[:-rest]
-        rest = mask[-rest:]
-        split = mask.reshape(N, window)
-        out = np.zeros(N+1)
-        out[:N] = split.sum(axis=1)
-        out[-1] = sum(rest)
-        indicator = 1-(len(np.where(out==0)[0])/len(out))
-
-        return indicator
-
     # def get_indicator(self):
-    #     split_length = self.pred_ind[1:]-self.pred_ind[:-1]
-    #     long_split_length = split_length[np.where(split_length>=1500)[0]]
-    #     long_split_second = np.floor(long_split_length/1000)
-    #     indicator = 1-(np.sum(long_split_second)*1000/len(self.data))
+
+    #     window = 1500
+
+    #     length = self.data.shape[0]
+    #     mask = np.zeros(length)
+    #     mask[self.pred_ind] = 1
+    #     N = int(length/window)
+    #     rest = length%window
+    #     mask = mask[:-rest]
+    #     rest = mask[-rest:]
+    #     split = mask.reshape(N, window)
+    #     out = np.zeros(N+1)
+    #     out[:N] = split.sum(axis=1)
+    #     out[-1] = sum(rest)
+    #     indicator = 1-(len(np.where(out==0)[0])/len(out))
+
     #     return indicator
+
+    def get_indicator(self):
+        split_length = self.pred_ind[1:]-self.pred_ind[:-1]
+        long_split_length = split_length[np.where(split_length>=1500)[0]]
+        long_split_second = np.floor(long_split_length/1000)
+        indicator = 1-(np.sum(long_split_second)*1000/len(self.data))
+        return indicator
     
     def plot_result(self, slice_ind=None):
         if slice_ind == None:
@@ -259,14 +259,15 @@ class BECTdetect(object):
                 slice_ind[1] = len(self.data)-1
             size = [slice_ind[0], slice_ind[1]]
         
-        n = 3
+        n = 2
         
         i = 0
         plt.clf()
 
         i += 1
         plt.subplot(n,1,i)
-        plt.plot(self.raw_data[self.s_channel][size[0]:size[1]], linewidth="1")
+        # plt.plot(self.raw_data[self.s_channel][size[0]:size[1]], linewidth="1")
+        plt.plot(np.arange(size[0],size[1]), self.bandPassData[size[0]:size[1]], linewidth="1")
         plt.title("Signal of "+self.s_channel+" channel")
 
         for ind in self.pred_ind:
@@ -277,20 +278,6 @@ class BECTdetect(object):
         plt.subplot(n,1,i)
         plt.plot(np.arange(size[0],size[1]),self.output1[size[0]:size[1]],linewidth="1")
         plt.title("Detection 1")
-
-        for ind in self.pred_ind:
-            if ind>=size[0] and ind<=size[1]:
-                plt.axvline(ind, c="g")
-
-        # i += 1
-        # plt.subplot(n,1,i)
-        # plt.plot(np.arange(size[0],size[1]), self.lowPassData[size[0]:size[1]],linewidth="1")
-        # plt.title("Signal of "+self.s_channel+" channel (Low Pass Filted)")
-
-        i += 1
-        plt.subplot(n,1,i)
-        plt.plot(np.arange(size[0],size[1]), self.output2[size[0]:size[1]],linewidth="1")
-        plt.title("Detection 2")
 
         for ind in self.pred_ind:
             if ind>=size[0] and ind<=size[1]:
