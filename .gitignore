@@ -1,6 +1,7 @@
 /.vscode/
 **/.ipynb_checkpoints/
 *.zip
+*.gif
 **/__pycache__/
 **/S-BECT/
 *.edf
