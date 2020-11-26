@@ -112,5 +112,5 @@ class EDFreader(object):
         filted_data = signal.filtfilt(b, a, data)
         return filted_data
 
-    def save_txt(self):
-        self.OriginalData.to_csv('./NewcsvData/'+self.filename+'.txt', sep='\t', index=False)
+    def save_txt(self, path):
+        self.OriginalData.to_csv('./'+path+'/'+self.filename+'.txt', sep='\t', index=False)

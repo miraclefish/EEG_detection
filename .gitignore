@@ -7,4 +7,5 @@
 *.edf
 *.png
 **/NewcsvData/
+**/csvData/
 /EEG_VI/癫痫数据/

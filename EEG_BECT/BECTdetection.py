@@ -24,10 +24,13 @@ class BECTdetect(object):
             self._template = self._get_pdf_template()
         
         self.bandPassData = self._band_pass_filter(LowHz=0.5, HigHz=40, data=self.data)
-        self.output1 = self._adaptive_filter(self.bandPassData)
-        self.pred_ind = self._bect_detection(self.output1)
+        self.maskPassData = self._band_pass_filter(LowHz=0.5, HigHz=8, data=self.data)
+        self.output1, self.diff_score = self._adaptive_filter(self.bandPassData)
+        self.pred_ind, self.peak_score = self._bect_detection(self.output1)
+        self.band_ind = self._band_ind_detection(self.bandPassData)
+        self._find_slow_wave()
 
-        self.indicator = self.get_indicator()
+        self.indicator = self.get_metric()
         
         self.p = plt.figure(figsize=[15,4])
         self._print_output()
@@ -35,7 +38,7 @@ class BECTdetect(object):
             
     def _read_txt(self):
         raw_data = pd.read_csv(self.path, sep='\t')
-        raw_data = raw_data[0:86500]
+        # raw_data = raw_data[0:86500]
         self.s_channel = raw_data.columns[0]
         data = raw_data.values
         if self.print_log:
@@ -47,7 +50,7 @@ class BECTdetect(object):
         print(" ")
         print("**********{:s}***********".format(self.filename))
         print("Signal Length-->{:d} s;".format(int(self.data.shape[0]/1000)))
-        print("Pred_S in channel \"{:s}\"-->{:d}; Indicator-->{:.2f}%.".format(self.s_channel, int(len(self.pred_ind)), self.indicator*100))
+        print("Pred_S in channel \"{:s}\"-->{:d}; Metric-->{:.2f}%.".format(self.s_channel, int(len(self.pred_ind)), self.indicator*100))
         return None
     
     def _get_pdf_template(self):
@@ -130,9 +133,13 @@ class BECTdetect(object):
         
         i = 0
         for x in datas:
+            # 保证滑窗滤波后信号长度与原信号长度相同，进行Padding操作
+            pad_width = ((int((self.window-1)/2),int((self.window-1)/2)), (0,0))
+            x_pad = np.pad(x, pad_width=pad_width, mode='constant', constant_values=0)
+
             # 对 x 滑窗的过程矩阵并行化，详情请参考函数 self._window_slide()
             # xx 的每一行是一个 x 的滑窗提取，步长为 1
-            xx = self._window_slide(x)
+            xx = self._window_slide(x_pad)
 
             # 对每个滑窗生成一个匹配模板，参考 xx 进行自适应变形，也进行了矩阵并行化。
             if self.template_mode == "pdf":
@@ -144,27 +151,56 @@ class BECTdetect(object):
             # 求均值是为了让输出 score 变小一点
             score = np.sum(xx*template, axis=1)/xx.shape[1]**2
 
-            # 滑窗计算后两端补零到原始长度
-            expanded_score = np.hstack([np.zeros(int(self.window/2)), score, np.zeros(self.window-int(self.window/2)-1)])
+            # # 滑窗计算后两端补零到原始长度
+            # expanded_score = np.hstack([np.zeros(int(self.window/2)), score, np.zeros(self.window-int(self.window/2)-1)])
 
             # 存储输出结果为滤后信号 filted_data
             if i<len(datas)-1:
-                filted_data[i*x.shape[0]:(i+1)*x.shape[0]] = expanded_score.reshape(-1,1)
+                filted_data[i*x.shape[0]:(i+1)*x.shape[0]] = score.reshape(-1,1)
             else:
-                filted_data[-(len(datas)-i)*x.shape[0]:] = expanded_score.reshape(-1,1)
+                filted_data[-(len(datas)-i)*x.shape[0]:] = score.reshape(-1,1)
 
             i += 1
+        
+        diff_score = np.zeros((len(filted_data),1))
+        diff_score[1:] = filted_data[1:] - filted_data[:-1]
 
-            # outline_ind, flag = self._find_S_points(score)
-            # # print(i,"-->",flag)
-            # if len(outline_ind) > 0:
-            #     outline_ind += i * detection_length
-            #     pred_ind = pred_ind + list(outline_ind)
-            # i += 1
-        # pred_ind = np.array(pred_ind)
-        # filted_data[filted_data < 0] = 0
+        return filted_data, diff_score
 
-        return filted_data
+    def _find_slow_wave(self):
+        d_mask_data = self.maskPassData[1:] - self.maskPassData[:-1]
+        peak_ind = np.where(d_mask_data[:-1]*d_mask_data[1:]<0)[0]+1
+        band_pair = np.array(self.band_ind).reshape(-1,2)
+        for i, ind_pair in enumerate(band_pair):
+            loc = int(np.sum(peak_ind<ind_pair[1]))-1
+            if loc+3 < len(peak_ind):
+
+                candidate_wave_length = peak_ind[loc+3] - peak_ind[loc+1]
+                low_bound = (ind_pair[1]-ind_pair[0])*1
+                high_bound = (ind_pair[1]-ind_pair[0])*7
+                length_flag = candidate_wave_length > low_bound and candidate_wave_length < high_bound
+
+                candidate_slow_wave = self.maskPassData[peak_ind[loc+1]:peak_ind[loc+3]]
+                spike_wave = self.maskPassData[ind_pair[0]:ind_pair[1]]
+                candidate_wave_high = np.max(candidate_slow_wave) - np.min(candidate_slow_wave)
+                low_bound = (np.max(spike_wave)-np.min(spike_wave))*0.33
+                high_flag = candidate_wave_high > low_bound
+                if high_flag and length_flag:
+                    band_pair[i,1] = peak_ind[loc+3]
+        self.band_ind = band_pair.reshape(-1,1).squeeze()
+        return None
+
+    def _band_ind_detection(self, diff_score):
+        dd_score = diff_score[1:] - diff_score[:-1]
+        peak_ind = np.where(dd_score[:-1]*dd_score[1:]<0)[0]+1
+        l = len(peak_ind)
+        band_ind = []
+        for ind in self.pred_ind:
+            loc = int(np.sum(peak_ind<ind))-1
+            if loc-1 >=0 and loc+1<=l-1:
+                band_ind.append(peak_ind[loc-1])
+                band_ind.append(peak_ind[loc+1])
+        return band_ind
     
     def _bect_detection(self, score):
         dscore = score[1:]-score[:-1]
@@ -173,59 +209,12 @@ class BECTdetect(object):
         peak_score = score[peak_ind]
         peak_score = np.sign(peak_score)*np.log(np.abs(peak_score)+1)
 
-        large_ind = np.where(peak_score - np.mean(peak_score) > np.std(peak_score)*2)[0]
+        large_ind = np.where(peak_score - np.mean(peak_score) > np.std(peak_score)*self.threshold)[0]
         ind = peak_ind[large_ind]
-        peak_score = peak_score[large_ind]
-
-
-        # n = self.threshold
-        # mean = np.mean(peak_score)
-        # std = np.std(peak_score)
-        # ind = np.where(abs(peak_score-mean)>n*std)[0]
-        # outline_ind = peak_ind[ind]
-        # ind = np.where(score[outline_ind]>0)[0]
-        # outline_ind = outline_ind[ind]
-        # outline_ind += int(self.window/2)
-
         pred_ind = ind
-        return pred_ind
-    
-    def _find_S_points(self, score):
-        dscore = score[1:]-score[:-1]
+        return pred_ind, peak_score
         
-        peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]
-        peak_score = score[peak_ind]
-        flag = 0
-        
-        if np.std(peak_score) < 200:
-            outline_ind = []
-        else:
-            flag_score = (score - min(score))/(max(score)-min(score))-0.5
-            # peak_ind_0 = [ind for i, ind in enumerate(peak_ind) if i%2==0]
-            # peak_ind_1 = [ind for i, ind in enumerate(peak_ind) if i%2==1]
-            # if len(peak_ind_0) > len(peak_ind_1):
-            #     peak_ind_0 = peak_ind_0[:-1]
-            # elif len(peak_ind_1) > len(peak_ind_0):
-            #     peak_ind_1 = peak_ind_1[:-1]
-            # assert(len(peak_ind_0)==len(peak_ind_1))
-            # delta = np.abs(flag_score[peak_ind_1] - flag_score[peak_ind_0])
-            delta = np.abs(flag_score[peak_ind[1:]] - flag_score[peak_ind[:-1]])
-            delta = delta[np.where(delta < 0.8)[0]]
-            flag = np.sum(delta) 
-
-            if flag > 3.0:
-                outline_ind = []
-            else:
-                n = self.threshold
-                mean = np.mean(peak_score)
-                std = np.std(peak_score)
-                ind = np.where(abs(peak_score-mean)>n*std)[0]
-                outline_ind = peak_ind[ind]
-                ind = np.where(score[outline_ind]>0)[0]
-                outline_ind = outline_ind[ind]
-        return outline_ind, flag
-        
-    # def get_indicator(self):
+    # def get_metric(self):
 
     #     window = 1500
 
@@ -244,13 +233,23 @@ class BECTdetect(object):
 
     #     return indicator
 
-    def get_indicator(self):
-        split_length = self.pred_ind[1:]-self.pred_ind[:-1]
-        long_split_length = split_length[np.where(split_length>=1500)[0]]
-        long_split_second = np.floor(long_split_length/1000)
-        indicator = 1-(np.sum(long_split_second)*1000/len(self.data))
-        return indicator
+    # def get_metric(self):
+    #     split_length = self.pred_ind[1:]-self.pred_ind[:-1]
+    #     long_split_length = split_length[np.where(split_length>=1500)[0]]
+    #     long_split_second = np.floor(long_split_length/1000)
+    #     indicator = 1-(np.sum(long_split_second)*1000/len(self.data))
+    #     return indicator
     
+    def get_metric(self):
+        mask = np.zeros((len(self.output1),1))
+        band_pair = self.band_ind.reshape(-1,2)
+        for ind_pair in band_pair:
+            mask[ind_pair[0]:ind_pair[1]] = 1
+        spike_time = np.sum(mask)
+        metric = spike_time/len(self.output1)
+        return metric
+
+
     def plot_result(self, slice_ind=None):
         if slice_ind == None:
             size = [0, len(self.data)-1]
@@ -259,8 +258,7 @@ class BECTdetect(object):
                 slice_ind[1] = len(self.data)-1
             size = [slice_ind[0], slice_ind[1]]
         
-        n = 2
-        
+        n = 4
         i = 0
         plt.clf()
 
@@ -268,21 +266,39 @@ class BECTdetect(object):
         plt.subplot(n,1,i)
         # plt.plot(self.raw_data[self.s_channel][size[0]:size[1]], linewidth="1")
         plt.plot(np.arange(size[0],size[1]), self.bandPassData[size[0]:size[1]], linewidth="1")
-        plt.title("Signal of "+self.s_channel+" channel")
+        plt.title(self.filename+" Signal of "+self.s_channel+" channel")
 
-        for ind in self.pred_ind:
-            if ind>=size[0] and ind<=size[1]:
-                plt.axvline(ind, c="g")
-        
         i += 1
         plt.subplot(n,1,i)
-        plt.plot(np.arange(size[0],size[1]),self.output1[size[0]:size[1]],linewidth="1")
-        plt.title("Detection 1")
+        plt.plot(np.arange(size[0],size[1]),self.output1[size[0]:size[1]])
+        plt.title("Spike Detection with Threshold")
 
         for ind in self.pred_ind:
             if ind>=size[0] and ind<=size[1]:
                 plt.axvline(ind, c="g")
+
+        i += 1
+        plt.subplot(n,1,i)
+        plt.plot(np.arange(size[0],size[1]), self.maskPassData[size[0]:size[1]], linewidth="1")
+        plt.title("Slow-wave Discriminent")
+
+        for ind in np.array(self.band_ind).reshape(-1,2):
+            if ind[0]>=size[0] and ind[1]<=size[1]:
+                plt.plot(np.arange(ind[0], ind[1]), self.maskPassData[ind[0]:ind[1]],c="r")
         
+        for ind in self.pred_ind:
+            if ind>=size[0] and ind<=size[1]:
+                plt.axvline(ind, c="g")
+
+        i += 1
+        plt.subplot(n,1,i)
+        plt.plot(np.arange(size[0],size[1]), self.bandPassData[size[0]:size[1]], linewidth="1")
+        plt.title("Detection Result")
+
+        for ind in np.array(self.band_ind).reshape(-1,2):
+            if ind[0]>=size[0] and ind[1]<=size[1]:
+                plt.plot(np.arange(ind[0], ind[1]), self.bandPassData[ind[0]:ind[1]],c="r")
+    
         plt.tight_layout()
         fig = plt.gcf()
         plt.show()
