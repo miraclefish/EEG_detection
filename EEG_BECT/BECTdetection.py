@@ -32,7 +32,6 @@ class BECTdetect(object):
 
         self.indicator = self.get_metric()
         
-        self.p = plt.figure(figsize=[15,4])
         self._print_output()
         
             
@@ -260,6 +259,7 @@ class BECTdetect(object):
         
         n = 4
         i = 0
+        self.p = plt.figure(figsize=[15,4])
         plt.clf()
 
         i += 1
