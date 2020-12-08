@@ -14,8 +14,9 @@ for file, gt in zip(nameList, label):
     best_metric = 1
     for th in thresholds:
         filepath = "./NewcsvData/" + file[:-4] + ".txt"
-        bect = BECTdetect(filepath = filepath, S_size=61, threshold=th, print_log=False)
-        metrics.append(bect.indicator)
+        bect = BECTdetect(filepath=filepath)
+        SWI = bect.Analysis(Spike_width=61, threshold=th, template_mode="gamma")
+        metrics.append(SWI)
     dist = list(np.abs(gt - metrics))
     ind = dist.index(np.min(dist))
 
@@ -28,23 +29,23 @@ for file, gt in zip(nameList, label):
     plt.axhline(gt, c='r')
 
     plt.subplot(1, 3, 2)
-    n, bins, patches = plt.hist(bect.peak_score, bins=25, rwidth=0.9, density=True)
-    mu = np.mean(bect.peak_score)
-    sigma = np.std(bect.peak_score)
+    n, bins, patches = plt.hist(bect.spike_score, bins=25, rwidth=0.9, density=True)
+    mu = np.mean(bect.spike_score)
+    sigma = np.std(bect.spike_score)
     y = ((1 / (np.sqrt(2 * np.pi) * sigma)) * np.exp(-0.5 * (1 / sigma * (bins - mu))**2))
     plt.plot(bins, y, '--')
     plt.axvline(sigma*thresholds[ind], c='r', lineWidth=2)
     
 
     plt.subplot(1, 3, 3)
-    cdf = [len(np.where(bect.peak_score <= bins[i])[0])/len(bect.peak_score) for i in range(len(bins))]
+    cdf = [len(np.where(bect.spike_score <= bins[i])[0])/len(bect.spike_score) for i in range(len(bins))]
     plt.plot(bins, cdf)
     plt.axvline(sigma*thresholds[ind], c='r', lineWidth=2)
 
-    prob_th = len(np.where(bect.peak_score <= sigma*thresholds[ind])[0])/len(bect.peak_score)
+    prob_th = len(np.where(bect.spike_score <= sigma*thresholds[ind])[0])/len(bect.spike_score)
     plt.suptitle("<{}> best_th = {:.1f} || gt = {:.2f}% || prob_th = {:.2f}".format(file[:-4], thresholds[ind], gt*100, prob_th))
-    # plt.show()
-    plt.savefig('./th_fig/' + file[:-4] + '.png')
+    plt.show()
+    # plt.savefig('./th_fig/' + file[:-4] + '.png')
     pass
 
 pass
