@@ -6,7 +6,6 @@ import pandas as pd
 from scipy import stats
 from scipy.signal import butter, filtfilt
 
-
 class BECTdetect(object):
     
     def __init__(self, filepath, print_log=False):

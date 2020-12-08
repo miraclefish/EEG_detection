@@ -12,9 +12,9 @@ for file, gt in zip(nameList, label):
     metrics = []
     best_th = 0
     best_metric = 1
+    filepath = "./NewcsvData/" + file[:-4] + ".txt"
+    bect = BECTdetect(filepath=filepath)
     for th in thresholds:
-        filepath = "./NewcsvData/" + file[:-4] + ".txt"
-        bect = BECTdetect(filepath=filepath)
         SWI = bect.Analysis(Spike_width=61, threshold=th, template_mode="gamma")
         metrics.append(SWI)
     dist = list(np.abs(gt - metrics))
