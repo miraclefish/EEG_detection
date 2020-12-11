@@ -33,7 +33,7 @@ class BECTdetect(object):
         data = raw_data.values
 
         if self.print_log:
-            print("The length of the data is {:.2f}s.".format(data.shape[0]/1000))
+            print("The length of the data is {:.3f}s.".format(data.shape[0]/1000))
 
         return data
     
@@ -173,7 +173,8 @@ class BECTdetect(object):
         n = int((len(x)-(Spike_width-stride))/stride)
         out = np.zeros((n, Spike_width))
         for i in range(Spike_width-1):
-            out[:,i] = x[i:-(Spike_width-1-i)].T
+            out[:,i] = x[i:-(Spike_width-i-1)].squeeze()
+        out[:,-1] = x[Spike_width-1:].squeeze()
         out = (out.T - np.mean(out, axis=1)).T
         return out
 

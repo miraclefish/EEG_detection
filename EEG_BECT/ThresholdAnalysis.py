@@ -13,7 +13,7 @@ for file, gt in zip(nameList, label):
     best_th = 0
     best_metric = 1
     filepath = "./NewcsvData/" + file[:-4] + ".txt"
-    bect = BECTdetect(filepath=filepath)
+    bect = BECTdetect(filepath=filepath, print_log=True)
     for th in thresholds:
         SWI = bect.Analysis(Spike_width=61, threshold=th, template_mode="gamma")
         metrics.append(SWI)
@@ -44,8 +44,8 @@ for file, gt in zip(nameList, label):
 
     prob_th = len(np.where(bect.spike_score <= sigma*thresholds[ind])[0])/len(bect.spike_score)
     plt.suptitle("<{}> best_th = {:.2f} || gt = {:.2f}% || prob_th = {:.2f}".format(file[:-4], thresholds[ind], gt*100, prob_th))
-    plt.show()
-    # plt.savefig('./th_fig/' + file[:-4] + '.png')
+    # plt.show()
+    plt.savefig('./th_fig/' + file[:-4] + '.png')
     pass
 
 pass
