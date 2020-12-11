@@ -51,6 +51,18 @@ class BECTdetect(object):
 
         return SWI
 
+    def get_threshold(self, score, low_bound, Hig_bound):
+        dscore = score[1:]-score[:-1]
+        peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]+1
+
+        peak_score = score[peak_ind]
+        peak_score = np.sign(peak_score)*np.log(np.abs(peak_score)+1)
+
+        N = len(peak_score)
+        ranks = np.linspace(min(peak_score), max(peak_score), 1000)
+        cdf_list = [len(np.where(peak_score<=x)[0])/N for x in ranks]
+        
+
 
     def Adaptive_Decomposition(self, Spike_width, template_mode):
         
