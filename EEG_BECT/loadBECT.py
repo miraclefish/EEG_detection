@@ -2,7 +2,7 @@ from EDFreader import EDFreader
 import numpy as np
 import os
 
-path = './NewEDFData'
+path = './NewedfData'
 filelist = os.listdir(path)
 for i, filename in enumerate(filelist):
     print(i+1, ':', filename)

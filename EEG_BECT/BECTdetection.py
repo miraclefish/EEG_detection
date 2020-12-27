@@ -37,7 +37,48 @@ class BECTdetect(object):
 
         return data
     
-    def Analysis(self, Spike_width, threshold, template_mode):
+    def Auto_Analysis(self, Spike_width, template_mode):
+        
+        self.score = self.Adaptive_Decomposition(Spike_width, template_mode)
+
+        th_Low, th_Hig, peak_ind, self.spike_score = self.get_threshold(self.score, 0.90, 0.95)
+
+        Lo_spike_ind = self.Auto_bect_discrimination(peak_ind, self.spike_score, th_Low)
+        Hi_spike_ind = self.Auto_bect_discrimination(peak_ind, self.spike_score, th_Hig)
+
+        Lo_band_ind = self.band_ind_expand(Lo_spike_ind)
+        Hi_band_ind = self.band_ind_expand(Hi_spike_ind)
+
+        Lo_band_pair = self.find_slow_wave(Lo_band_ind)
+        Hi_band_pair = self.find_slow_wave(Hi_band_ind)
+
+        Lo_SWI = self.get_SWI(Lo_band_pair)
+        Hi_SWI = self.get_SWI(Hi_band_pair)
+
+        return Lo_SWI, Hi_SWI
+
+    
+    def get_threshold(self, score, low_bound=0.88, Hig_bound=0.98):
+        peak_ind, peak_score = self.get_peak_score(score)
+
+        N = len(peak_score)
+        ranks = np.linspace(min(peak_score), max(peak_score), 1000)
+        cdf_list = np.array([len(np.where(peak_score<=x)[0])/N for x in ranks])
+
+        th_Low_finder = np.abs(cdf_list - low_bound)
+        th_Low = ranks[np.argmin(th_Low_finder)]
+
+        th_Hig_finder = np.abs(cdf_list - Hig_bound)
+        th_Hig = ranks[np.argmin(th_Hig_finder)]
+
+        return th_Low, th_Hig, peak_ind, peak_score
+
+    def Auto_bect_discrimination(self, peak_ind, peak_score, threshold):
+        spike_ind = np.where(peak_score > threshold)[0]
+        spike_ind = peak_ind[spike_ind]
+        return spike_ind
+
+    def Custom_Analysis(self, Spike_width, threshold, template_mode):
 
         self.score = self.Adaptive_Decomposition(Spike_width, template_mode)
 
@@ -50,20 +91,7 @@ class BECTdetect(object):
         SWI = self.get_SWI(band_pair=self.band_pair)
 
         return SWI
-
-    def get_threshold(self, score, low_bound, Hig_bound):
-        dscore = score[1:]-score[:-1]
-        peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]+1
-
-        peak_score = score[peak_ind]
-        peak_score = np.sign(peak_score)*np.log(np.abs(peak_score)+1)
-
-        N = len(peak_score)
-        ranks = np.linspace(min(peak_score), max(peak_score), 1000)
-        cdf_list = [len(np.where(peak_score<=x)[0])/N for x in ranks]
         
-
-
     def Adaptive_Decomposition(self, Spike_width, template_mode):
         
         template = np.zeros(Spike_width)
@@ -89,15 +117,19 @@ class BECTdetect(object):
         return score
 
     def bect_discrimination(self, score, threshold):
+        peak_ind, peak_score = self.get_peak_score(score)
+
+        spike_ind = np.where(peak_score - np.mean(peak_score) > np.std(peak_score)*threshold)[0]
+        spike_ind = peak_ind[spike_ind]
+        return spike_ind, peak_score
+
+    def get_peak_score(self, score):
         dscore = score[1:]-score[:-1]
         peak_ind = np.where(dscore[:-1]*dscore[1:]<0)[0]+1
 
         peak_score = score[peak_ind]
         peak_score = np.sign(peak_score)*np.log(np.abs(peak_score)+1)
-
-        spike_ind = np.where(peak_score - np.mean(peak_score) > np.std(peak_score)*threshold)[0]
-        spike_ind = peak_ind[spike_ind]
-        return spike_ind, peak_score
+        return peak_ind, peak_score
 
     def band_ind_expand(self, spike_ind):
         d_data = self.bandPassData[1:] - self.bandPassData[:-1]

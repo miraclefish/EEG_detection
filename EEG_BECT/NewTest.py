@@ -14,13 +14,14 @@ indicators = []
 #     bect = BECTdetect(filepath = filepath, S_size=61, threshold=1.5, print_log=False)
 #     indicators.append(bect.indicator)
 #     pass
-threshold = 2.3
-filepath = os.path.join(path, filelist[2])
-bect = BECTdetect(filepath = filepath, S_size=61, threshold=threshold, print_log=False)
+threshold = 2.5
+filepath = os.path.join(path, filelist[44])
+bect = BECTdetect(filepath = filepath, print_log=True)
+SWI = bect.Custom_Analysis(Spike_width=61, threshold=threshold, template_mode='gamma')
 
-plt.hist(bect.peak_score, bins=25)
-plt.axvline(np.std(bect.peak_score)*threshold)
-plt.show()
+# plt.hist(bect.peak_score, bins=25)
+# plt.axvline(np.std(bect.peak_score)*threshold)
+# plt.show()
 
 # pass
 
