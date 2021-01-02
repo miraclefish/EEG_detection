@@ -12,7 +12,9 @@ from test import test
 
 # 初始化设定
 
-cuda = False
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
+
 lr = 1e-2
 batch_size = 32
 n_epoch = 100
@@ -33,8 +35,8 @@ optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=l
 loss_function = nn.MSELoss()
 
 if cuda:
-    net = net.cuda()
-    loss = loss.cuda()
+    net = net.to(device)
+    loss = loss.to(device)
 
 for epoch in range(n_epoch):
     data_train_iter = iter(dataloader_train)
@@ -52,9 +54,9 @@ for epoch in range(n_epoch):
         net.zero_grad()
 
         if cuda:
-            x_data = x_data.cuda()
-            x_feature = x_feature.cuda()
-            label = label.cuda()
+            x_data = x_data.to(device)
+            x_feature = x_feature.to(device)
+            label = label.to(device)
 
         output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
         loss = loss_function(output, label)
