@@ -36,7 +36,7 @@ loss_function = nn.MSELoss()
 
 
 net = net.to(device)
-loss = loss.to(device)
+loss_function = loss_function.to(device)
 
 for epoch in range(n_epoch):
     data_train_iter = iter(dataloader_train)
