@@ -21,7 +21,7 @@ class BECTDataset(Dataset):
             self.DataPath = os.path.join(DataPath, type)
             self.FeaturePath = os.path.join(FeaturePath, type)
         self.withData = withData
-        self.correct_factor = -0.45
+        # self.correct_factor = -0.45
         self.LabelInfo = pd.read_csv(LabelFile, sep='\t', index_col=0)
         self.DataFileList = self._get_file_list(self.DataPath)
         
@@ -32,7 +32,7 @@ class BECTDataset(Dataset):
         data_path = os.path.join(self.DataPath, self.DataFileList[idx])
         feature_path = os.path.join(self.FeaturePath, self.DataFileList[idx])
         HistFeature = np.loadtxt(feature_path)
-        label = self.LabelInfo['cdf'][self.DataFileList[idx][:-4]] + self.correct_factor
+        label = self.LabelInfo['cdf'][self.DataFileList[idx][:-4]]
         sample = {"Feature": torch.from_numpy(HistFeature), "label": torch.from_numpy(np.array(label))}
         if self.withData == True:
             data = np.loadtxt(data_path)
