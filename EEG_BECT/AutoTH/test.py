@@ -57,11 +57,11 @@ def test(dataset_name, epoch):
         output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
 
         if i == len_dataloader-1:
-            label_total[i*batch_size:] = label.cup().data.numpy().squeeze()
-            output_total[i*batch_size:] = output.cup().data.numpy().squeeze()
+            label_total[i*batch_size:] = label.cpu().data.numpy().squeeze()
+            output_total[i*batch_size:] = output.cpu().data.numpy().squeeze()
         else:
-            label_total[i*batch_size:(i+1)*batch_size] = label.cup().data.numpy().squeeze()
-            output_total[i*batch_size:(i+1)*batch_size] = output.cup().data.numpy().squeeze()
+            label_total[i*batch_size:(i+1)*batch_size] = label.cpu().data.numpy().squeeze()
+            output_total[i*batch_size:(i+1)*batch_size] = output.cpu().data.numpy().squeeze()
 
         i += 1
     
