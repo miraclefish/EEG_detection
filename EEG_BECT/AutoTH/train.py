@@ -15,8 +15,8 @@ from test import test
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 
-lr = 1e-2
-batch_size = 32
+lr = 1e-3
+batch_size = 8
 n_epoch = 100
 model_root = "./model"
 
@@ -31,7 +31,7 @@ dataSize = dataset_train[0]['Data'].shape[0]
 
 net = AutoTHNet(maxPoolSize=histFeatureSize, avgPoolSize=dataSize)
 
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
+optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr, weight_decay=0.01)
 loss_function = nn.MSELoss()
 
 
