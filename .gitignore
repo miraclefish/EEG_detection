@@ -6,8 +6,10 @@
 **/S-BECT/
 *.edf
 *.png
+*.tar
 **/NewcsvData/
 **/csvData/
 **/FiltedData/
 **/HistFeature/
+**/runs/
 /EEG_VI/癫痫数据/
