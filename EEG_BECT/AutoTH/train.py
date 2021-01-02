@@ -34,9 +34,9 @@ net = AutoTHNet(maxPoolSize=histFeatureSize, avgPoolSize=dataSize)
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
 loss_function = nn.MSELoss()
 
-if cuda:
-    net = net.to(device)
-    loss = loss.to(device)
+
+net = net.to(device)
+loss = loss.to(device)
 
 for epoch in range(n_epoch):
     data_train_iter = iter(dataloader_train)
@@ -53,10 +53,9 @@ for epoch in range(n_epoch):
         
         net.zero_grad()
 
-        if cuda:
-            x_data = x_data.to(device)
-            x_feature = x_feature.to(device)
-            label = label.to(device)
+        x_data = x_data.to(device)
+        x_feature = x_feature.to(device)
+        label = label.to(device)
 
         output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
         loss = loss_function(output, label)

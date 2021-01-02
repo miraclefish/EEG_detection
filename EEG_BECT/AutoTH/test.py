@@ -12,7 +12,7 @@ def test(dataset_name, epoch):
 
     model_root = './model'
 
-    cuda = False
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     batch_size = 60
 
     """load data"""
@@ -33,8 +33,7 @@ def test(dataset_name, epoch):
 
     net = net.eval()
 
-    if cuda:
-        net = net.cuda()
+    net = net.to(device)
 
     len_dataloader = len(dataloader)
     data_iter = iter(dataloader)
@@ -51,10 +50,9 @@ def test(dataset_name, epoch):
         label = data['label'].float()
         label = label.unsqueeze(dim=1)
 
-        if cuda:
-            x_data = x_data.cuda()
-            x_feature = x_feature.cuda()
-            label = label.cuda()
+        x_data = x_data.to(device)
+        x_feature = x_feature.to(device)
+        label = label.to(device)
         
         output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
 
