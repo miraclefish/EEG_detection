@@ -16,7 +16,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 
 lr = 1e-3
-batch_size = 8
+batch_size = 60
 n_epoch = 100
 model_root = "./model"
 
@@ -58,7 +58,7 @@ for epoch in range(n_epoch):
         label = label.to(device)
 
         output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
-        loss = loss_function(output, label)
+        loss = loss_function(output, label) + torch.sum(torch.mul(chosen_mask, chosen_mask))
         loss.backward()
         optimizer.step()
 
