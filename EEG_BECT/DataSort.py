@@ -35,12 +35,12 @@ for file, gt in zip(nameList, label):
     bins = np.linspace(-8,8,51)
     bins[0] = -10
     bins[-1] = 10
-    feature = np.zeros((len(bins)-1, 3))
+    feature = np.zeros((len(bins)-1, 4))
     hist, bins = np.histogram(bect.spike_score, bins=bins, density=True)
     feature[:,0] = hist
     feature[:,1] = bins[:-1]
     feature[:,2] = bins[1:]
-    np.savetxt('./AutoTH/HistFeature/'+ file[:-4] + ".txt", feature, fmt='%.4f')
+    # np.savetxt('./AutoTH/HistFeature/'+ file[:-4] + ".txt", feature, fmt='%.4f')
 
     # 保存真值相关的所有信息
     Low_ind = len(np.where(metrics>=gt-0.05)[0])-1
@@ -52,6 +52,9 @@ for file, gt in zip(nameList, label):
     th_gt = th[ind]
     th_Low = th[Low_ind]
     th_Hig = th[Hig_ind]
+    chosen_mask = np.array(list(map(lambda x: 1 if (th_gt>x[0] and th_gt<x[1]) else 0, [bins_pair for bins_pair in feature[:,1:]])))
+    feature[:,3] = chosen_mask
+    np.savetxt('./AutoTH/HistFeature/'+ file[:-4] + ".txt", feature, fmt='%.4f')
     
     N = len(bect.spike_score)
     ranks = np.linspace(min(bect.spike_score), max(bect.spike_score), 1000)

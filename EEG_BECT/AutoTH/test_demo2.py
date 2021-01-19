@@ -1,19 +1,19 @@
 import os
 import torch
 import numpy as np
-from AutoTHNet import AutoTHNet
+import matplotlib.pyplot as plt
+from AutoTHNet2 import AutoTHNet2, Basicblock
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from Dataset import BECTDataset
 
-def test(dataset_name, epoch):
+def test_demo(dataset_name, epoch):
 
     assert dataset_name in ['train', 'test']
 
-    model_root = './model'
+    model_root = './model2'
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    batch_size = 60
+    batch_size = 80
 
     """load data"""
     if dataset_name == 'train':
@@ -23,11 +23,7 @@ def test(dataset_name, epoch):
     
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
 
-    "testing"
-    histFeatureSize = dataset[0]['Feature'].shape[0]
-    dataSize = dataset[0]['Data'].shape[0]
-
-    net = AutoTHNet(maxPoolSize=histFeatureSize, avgPoolSize=dataSize)
+    net = AutoTHNet2(Basicblock, [2,2,2,2,2])
     checkpoint = torch.load(os.path.join(model_root, 'model_epoch_'+str(epoch)+'.pth.tar'))
     net.load_state_dict(checkpoint['state_dict'])
 
@@ -45,29 +41,35 @@ def test(dataset_name, epoch):
     while i<len_dataloader:
         data = data_iter.next()
         
-        x_data = data['Data'].float()
-        x_feature = data['Feature'].float()
+        x = data['Data'].float()
+        x = torch.unsqueeze(x, dim=1)
         label = data['label'].float()
-        label = label.unsqueeze(dim=1)
 
-        x_data = x_data.to(device)
-        x_feature = x_feature.to(device)
+        x = x.to(device)
         label = label.to(device)
         
-        output, chosen, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
-
-        if i == len_dataloader-1:
-            label_total[i*batch_size:] = label.cpu().data.numpy().squeeze()
-            output_total[i*batch_size:] = output.cpu().data.numpy().squeeze()
-        else:
-            label_total[i*batch_size:(i+1)*batch_size] = label.cpu().data.numpy().squeeze()
-            output_total[i*batch_size:(i+1)*batch_size] = output.cpu().data.numpy().squeeze()
+        output = net(x=x)
 
         i += 1
     
-    mse = np.mean((label_total-output_total)**2)
-    print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, mse))
-    # print('chosenMask:', chosen_mask.cpu().data.numpy())
-    matrix = chosen.cpu().data.numpy()
+    mse = np.mean((label.cpu().data.numpy()-output.cpu().data.numpy())**2)
 
-    return mse, matrix
+    fig, ax = plt.subplots(figsize=(10,10))
+
+    ax.plot(label.cpu().data.numpy(), label='Label')
+    ax.plot(output.cpu().data.numpy(), label='Pred')
+    # ax.set_title('Test_demo with MSE = {:.2f}'.format(mse), fontsize=18)
+    ax.set_title('{}_demo'.format(dataset_name))
+    ax.set_xlabel('Samples', fontsize=18)
+    ax.set_ylabel('threshold', fontsize=18)
+    ax.legend()
+
+    print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, mse))
+
+    plt.show()
+
+    return mse
+
+if __name__ == "__main__":
+    mse = test_demo(dataset_name='test', epoch=47)
+    pass

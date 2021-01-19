@@ -30,12 +30,16 @@ class BECTDataset(Dataset):
     
     def __getitem__(self, idx):
         data_path = os.path.join(self.DataPath, self.DataFileList[idx])
-        feature_path = os.path.join(self.FeaturePath, self.DataFileList[idx])
-        HistFeature = np.loadtxt(feature_path)
-        label = self.LabelInfo['cdf'][self.DataFileList[idx][:-4]]
-        sample = {"Feature": torch.from_numpy(HistFeature), "label": torch.from_numpy(np.array(label))}
+        # feature_path = os.path.join(self.FeaturePath, self.DataFileList[idx])
+        # HistFeature = np.loadtxt(feature_path)
+        label = self.LabelInfo['threshold'][self.DataFileList[idx][:-4]]
+        sample = {"label": torch.from_numpy(np.array(label))}
+        # sample = {"Feature": torch.from_numpy(HistFeature[:,:-1]), "label": torch.from_numpy(np.array(label))}
+        # sample = {"Feature": torch.from_numpy(HistFeature[:,:-1]), "label": torch.from_numpy(np.array(label)), "mask_label": torch.from_numpy(HistFeature[:,-1])}
         if self.withData == True:
             data = np.loadtxt(data_path)
+            data = np.sign(data)*np.log(np.abs(data)+1)
+            data = (data - np.mean(data))/np.std(data)
             sample["Data"] = torch.from_numpy(data)
 
         return sample
@@ -44,8 +48,9 @@ class BECTDataset(Dataset):
         return os.listdir(self.DataPath)
 
 if __name__ == "__main__":
-    dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
-    # for i in range(len(dataset)):
-    #     sample = dataset[i]
-    #     print(i, sample["Feature"].size(), sample["label"].size())
+    dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=False)
+    label = np.zeros(len(dataset))
+    for i in range(len(dataset)):
+        sample = dataset[i]
+        label[i] = sample['label']
     pass

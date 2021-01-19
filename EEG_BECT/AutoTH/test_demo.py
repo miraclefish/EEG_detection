@@ -54,7 +54,7 @@ def test_demo(dataset_name, epoch):
         x_feature = x_feature.to(device)
         label = label.to(device)
         
-        output, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
+        output, chosen, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
 
         if i == len_dataloader-1:
             label_total[i*batch_size:] = label.cpu().data.numpy().squeeze()
@@ -71,7 +71,8 @@ def test_demo(dataset_name, epoch):
 
     ax.plot(label_total, label='Label')
     ax.plot(output_total, label='Pred')
-    ax.set_title('Test_demo with MSE = {:.2f}'.format(mse), fontsize=18)
+    # ax.set_title('Test_demo with MSE = {:.2f}'.format(mse), fontsize=18)
+    ax.set_title('{}_demo'.format(dataset_name))
     ax.set_xlabel('Samples', fontsize=18)
     ax.set_ylabel('cdf_value', fontsize=18)
     ax.legend()
@@ -83,5 +84,5 @@ def test_demo(dataset_name, epoch):
     return mse
 
 if __name__ == "__main__":
-    mse = test_demo(dataset_name='test', epoch=41)
+    mse = test_demo(dataset_name='train', epoch=17)
     pass

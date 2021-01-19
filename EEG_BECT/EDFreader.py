@@ -113,5 +113,6 @@ class EDFreader(object):
         return filted_data
 
     def save_txt(self, path):
-        print('length: ', len(self.OriginalData))
+        if len(self.OriginalData)!=30014:
+            print('length: ', len(self.OriginalData))
         self.OriginalData.to_csv('./'+path+'/'+self.filename+'.txt', sep='\t', index=False)

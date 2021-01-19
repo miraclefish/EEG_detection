@@ -1,19 +1,20 @@
 import os
 import torch
 import numpy as np
-from AutoTHNet import AutoTHNet
+from AutoTHNet2 import AutoTHNet2, Basicblock, Bottleneck
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torch import nn
 from Dataset import BECTDataset
 
 def test(dataset_name, epoch):
 
     assert dataset_name in ['train', 'test']
 
-    model_root = './model'
+    model_root = './model2'
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    batch_size = 60
+    batch_size = 32
 
     """load data"""
     if dataset_name == 'train':
@@ -24,10 +25,8 @@ def test(dataset_name, epoch):
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
 
     "testing"
-    histFeatureSize = dataset[0]['Feature'].shape[0]
-    dataSize = dataset[0]['Data'].shape[0]
 
-    net = AutoTHNet(maxPoolSize=histFeatureSize, avgPoolSize=dataSize)
+    net = AutoTHNet2(Basicblock, [2,2,2,2,2])
     checkpoint = torch.load(os.path.join(model_root, 'model_epoch_'+str(epoch)+'.pth.tar'))
     net.load_state_dict(checkpoint['state_dict'])
 
@@ -39,35 +38,29 @@ def test(dataset_name, epoch):
     data_iter = iter(dataloader)
 
     i = 0
-    label_total = np.zeros(len(dataset))
-    output_total = np.zeros(len(dataset))
+    loss_all = 0
+    loss = nn.MSELoss(reduction='sum')
 
     while i<len_dataloader:
         data = data_iter.next()
         
-        x_data = data['Data'].float()
-        x_feature = data['Feature'].float()
+        x = data['Data'].float()
         label = data['label'].float()
-        label = label.unsqueeze(dim=1)
 
-        x_data = x_data.to(device)
-        x_feature = x_feature.to(device)
+        x = x.unsqueeze(dim=1)
+        x = x.to(device)
         label = label.to(device)
         
-        output, chosen, chosen_mask, th = net(x_data=x_data, x_feature=x_feature)
+        output = net(x=x)
 
-        if i == len_dataloader-1:
-            label_total[i*batch_size:] = label.cpu().data.numpy().squeeze()
-            output_total[i*batch_size:] = output.cpu().data.numpy().squeeze()
-        else:
-            label_total[i*batch_size:(i+1)*batch_size] = label.cpu().data.numpy().squeeze()
-            output_total[i*batch_size:(i+1)*batch_size] = output.cpu().data.numpy().squeeze()
+        loss_all += loss(output, label)
 
         i += 1
     
-    mse = np.mean((label_total-output_total)**2)
-    print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, mse))
+    loss_all = loss_all/len(dataset)
+    loss_all = loss_all.data.numpy()
+    print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, loss_all))
     # print('chosenMask:', chosen_mask.cpu().data.numpy())
-    matrix = chosen.cpu().data.numpy()
+    # matrix = output.cpu().data.numpy()
 
-    return mse, matrix
+    return loss_all
