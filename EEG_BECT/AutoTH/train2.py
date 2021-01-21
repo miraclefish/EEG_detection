@@ -23,23 +23,24 @@ def plot_chosen_mask(epoch, matirx_trian, matrix_test, train_loss, test_loss):
 
 # 初始化设定
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 
 lr = 1e-3
-batch_size = 32
-n_epoch = 100
-model_root = "./model2"
+batch_size = 80
+n_epoch = 1000
+model_root = "./model3"
 
-dataset_train = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
+dataset_train = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
 dataloader_train = DataLoader(dataset=dataset_train, batch_size=batch_size, shuffle=True)
 
 # 定义网络
-writer = SummaryWriter('./runs2', flush_secs=1)
+writer = SummaryWriter('./runs3', flush_secs=1)
 
 net = AutoTHNet2(Basicblock, [2,2,2,2,2])
 
 optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=0.01)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.99)
 # loss = nn.CrossEntropyLoss()
 loss_function = nn.MSELoss()
 
@@ -51,6 +52,8 @@ for epoch in range(n_epoch):
     data_train_iter = iter(dataloader_train)
 
     i = 0
+
+    train_loss = 0
         
     while i < len(dataloader_train):
 
@@ -73,22 +76,26 @@ for epoch in range(n_epoch):
         # loss = loss_cdf(output, label) + torch.mean(torch.abs(torch.log(torch.sum(torch.mul(chosen_mask, chosen_mask), axis=1))))
         loss.backward()
         optimizer.step()
+        scheduler.step()
 
         i += 1
-        print('epoch: %d, [iter: %d / all %d], loss : %f' \
-              % (epoch, i, len(dataloader_train), loss.cpu().data.numpy()))
+        print('epoch: %d, [iter: %d / all %d], loss : %f, lr : %f' \
+              % (epoch, i, len(dataloader_train), loss.cpu().data.numpy(), scheduler.get_lr()[0]))
+        train_loss += loss.cpu().data.numpy()
     
-    torch.save({'state_dict': net.state_dict()},'{0}/model_epoch_{1}.pth.tar'.format(model_root, epoch))
+    if epoch%5 == 0:
+        torch.save({'state_dict': net.state_dict()},'{0}/model_epoch_{1}.pth.tar'.format(model_root, epoch))
+        train_loss = train_loss/len(dataloader_train)
+        print('epoch: %d, loss of the train dataset: %f' % (epoch, train_loss))
+        # train_loss = test("train", epoch)
+        test_loss = test("test", epoch)
 
-    train_loss = test("train", epoch)
-    test_loss = test("test", epoch)
-
-    # train_loss, matrix_train = test("train", epoch)
-    # test_loss, matrix_test = test("test", epoch)
-    writer.add_scalars('Loss', {'train_loss': train_loss, 'test_loss':test_loss}, epoch)
-    writer.close()
-    # writer.add_figure('chosen_mask', plot_chosen_mask(epoch, matrix_train, matrix_test, train_loss, test_loss), epoch)
-    # writer.close()
-    # writer.flush()
+        # train_loss, matrix_train = test("train", epoch)
+        # test_loss, matrix_test = test("test", epoch)
+        writer.add_scalars('Loss', {'train_loss': train_loss, 'test_loss':test_loss}, epoch)
+        writer.close()
+        # writer.add_figure('chosen_mask', plot_chosen_mask(epoch, matrix_train, matrix_test, train_loss, test_loss), epoch)
+        # writer.close()
+        # writer.flush()
 
 pass

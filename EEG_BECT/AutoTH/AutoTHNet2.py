@@ -6,8 +6,8 @@ import torch
 
 def conv3x1(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3 convolution with padding"""
-    return nn.Conv1d(in_planes, out_planes, kernel_size=5, stride=stride,
-                     padding=2, groups=groups, bias=False, dilation=dilation)
+    return nn.Conv1d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=dilation, groups=groups, bias=False, dilation=dilation)
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -102,16 +102,16 @@ class AutoTHNet2(nn.Module):
         self.maxpool = nn.MaxPool1d(kernel_size=3, padding=1, stride=2)
 
         # 64, 128, 256, 512是指扩大四倍之前的维度
-        self.stage1 = self.make_layer(self.block, 64, self.layers[0], stride=2)
-        self.stage2 = self.make_layer(self.block, 128, self.layers[1], stride=3)
-        self.stage3 = self.make_layer(self.block, 256, self.layers[2], stride=3)
+        self.stage1 = self.make_layer(self.block, 64, self.layers[0], stride=1)
+        self.stage2 = self.make_layer(self.block, 128, self.layers[1], stride=2)
+        self.stage3 = self.make_layer(self.block, 256, self.layers[2], stride=2)
         self.stage4 = self.make_layer(self.block, 512, self.layers[3], stride=3)
         self.stage5 = self.make_layer(self.block, 1024, self.layers[4], stride=3)
 
         self.conv_final = nn.Conv1d(1024, 1024, kernel_size=5, padding=2, stride=3)
         self.bn_final = nn.BatchNorm1d(1024)
         self.relu_final = nn.ReLU()
-        self.avgpool = nn.AvgPool1d(31)
+        self.avgpool = nn.AvgPool1d(47)
         self.fc = nn.Linear(1024, 1)
         self.relu_out = nn.ReLU()
 
@@ -131,9 +131,9 @@ class AutoTHNet2(nn.Module):
         out = self.stage4(out)
         out = self.stage5(out)
 
-        # out = self.conv_final(out)
-        # out = self.bn_final(out)
-        # out = self.relu_final(out)
+        out = self.conv_final(out)
+        out = self.bn_final(out)
+        out = self.relu_final(out)
         out = self.avgpool(out)
         out = torch.flatten(out, 1)
         out = self.fc(out)

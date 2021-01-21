@@ -11,16 +11,16 @@ def test(dataset_name, epoch):
 
     assert dataset_name in ['train', 'test']
 
-    model_root = './model2'
+    model_root = './model3'
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     batch_size = 32
 
     """load data"""
     if dataset_name == 'train':
-        dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
+        dataset = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
     elif dataset_name == 'test':
-        dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="test", withData=True)
+        dataset = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="test", withData=True)
     
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
 
@@ -39,7 +39,7 @@ def test(dataset_name, epoch):
 
     i = 0
     loss_all = 0
-    loss = nn.MSELoss(reduction='sum')
+    loss = nn.MSELoss()
 
     while i<len_dataloader:
         data = data_iter.next()
@@ -57,8 +57,8 @@ def test(dataset_name, epoch):
 
         i += 1
     
-    loss_all = loss_all/len(dataset)
-    loss_all = loss_all.data.numpy()
+    loss_all = loss_all/len_dataloader
+    loss_all = loss_all.cpu().data.numpy()
     print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, loss_all))
     # print('chosenMask:', chosen_mask.cpu().data.numpy())
     # matrix = output.cpu().data.numpy()

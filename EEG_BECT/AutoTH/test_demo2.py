@@ -10,16 +10,16 @@ def test_demo(dataset_name, epoch):
 
     assert dataset_name in ['train', 'test']
 
-    model_root = './model2'
+    model_root = './model3'
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     batch_size = 80
 
     """load data"""
     if dataset_name == 'train':
-        dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
+        dataset = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
     elif dataset_name == 'test':
-        dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="test", withData=True)
+        dataset = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="test", withData=True)
     
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
 
@@ -71,5 +71,5 @@ def test_demo(dataset_name, epoch):
     return mse
 
 if __name__ == "__main__":
-    mse = test_demo(dataset_name='test', epoch=47)
+    mse = test_demo(dataset_name='test', epoch=995)
     pass

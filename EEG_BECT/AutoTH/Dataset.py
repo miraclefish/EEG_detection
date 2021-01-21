@@ -38,7 +38,7 @@ class BECTDataset(Dataset):
         # sample = {"Feature": torch.from_numpy(HistFeature[:,:-1]), "label": torch.from_numpy(np.array(label)), "mask_label": torch.from_numpy(HistFeature[:,-1])}
         if self.withData == True:
             data = np.loadtxt(data_path)
-            data = np.sign(data)*np.log(np.abs(data)+1)
+            # data = np.sign(data)*np.log(np.abs(data)+1)
             data = (data - np.mean(data))/np.std(data)
             sample["Data"] = torch.from_numpy(data)
 
@@ -48,7 +48,7 @@ class BECTDataset(Dataset):
         return os.listdir(self.DataPath)
 
 if __name__ == "__main__":
-    dataset = BECTDataset(DataPath='./FiltedData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=False)
+    dataset = BECTDataset(DataPath='./OrigData', FeaturePath='./HistFeature', LabelFile='GT_info.csv', type="train", withData=True)
     label = np.zeros(len(dataset))
     for i in range(len(dataset)):
         sample = dataset[i]
