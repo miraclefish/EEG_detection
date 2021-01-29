@@ -8,4 +8,10 @@
 *.png
 **/NewcsvData/
 **/csvData/
+**/model2/
+**/FiltedData/
+**/HistFeature/
+**/runs/
+**/runs2/
+**/runs3/
 /EEG_VI/癫痫数据/
