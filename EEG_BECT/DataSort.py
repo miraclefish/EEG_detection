@@ -24,12 +24,15 @@ for file, gt in zip(nameList, label):
     # Max.append(max(bect.spike_score))
 
     for th in thresholds:
-        SWI = bect.Custom_Analysis(Spike_width=61, threshold=th, template_mode="gamma")
+        SWI, _ = bect.Custom_Analysis(Spike_width=61, threshold=th, template_mode="gamma")
         metrics.append(SWI)
     ind = np.argmin(np.abs(gt - metrics))
 
+    # 保存原始信号
+    np.savetxt('./AutoTH/OrigData/'+ file[:-4] + ".txt", np.round(bect.bandPassData, 4), fmt='%.4f')
+
     # 保存滤后信号
-    np.savetxt('./AutoTH/FiltedData/'+ file[:-4] + ".txt", np.round(bect.score, 4), fmt='%.4f')
+    # np.savetxt('./AutoTH/FiltedData/'+ file[:-4] + ".txt", np.round(bect.score, 4), fmt='%.4f')
 
     # 保存极值分布特征
     bins = np.linspace(-8,8,51)
@@ -54,14 +57,14 @@ for file, gt in zip(nameList, label):
     th_Hig = th[Hig_ind]
     chosen_mask = np.array(list(map(lambda x: 1 if (th_gt>x[0] and th_gt<x[1]) else 0, [bins_pair for bins_pair in feature[:,1:]])))
     feature[:,3] = chosen_mask
-    np.savetxt('./AutoTH/HistFeature/'+ file[:-4] + ".txt", feature, fmt='%.4f')
+    # np.savetxt('./AutoTH/HistFeature/'+ file[:-4] + ".txt", feature, fmt='%.4f')
     
     N = len(bect.spike_score)
     ranks = np.linspace(min(bect.spike_score), max(bect.spike_score), 1000)
     cdf = np.array([len(np.where(bect.spike_score<=x)[0])/N for x in ranks])
     l_ind = len(np.where(ranks<=th[Low_ind])[0])-1
     h_ind = len(np.where(ranks<=th[Hig_ind])[0])-1
-    print("Error allowed cdf interval [{:.2f},{:.2f}], length with {:.2f}".format(cdf[h_ind], cdf[l_ind], cdf[l_ind]-cdf[h_ind]))
+    # print("Error allowed cdf interval [{:.2f},{:.2f}], length with {:.2f}".format(cdf[h_ind], cdf[l_ind], cdf[l_ind]-cdf[h_ind]))
     
     cdf_gt = len(np.where(bect.spike_score <= th[ind])[0])/len(bect.spike_score)
     cdf_Low_gt = cdf[l_ind]
@@ -75,8 +78,11 @@ for file, gt in zip(nameList, label):
     GT_dict["cdf_Low"].append(np.round(cdf_Low_gt, 4))
     GT_dict["cdf_Hig"].append(np.round(cdf_Hig_gt, 4))
 
+    _, mask_label = bect.Custom_Analysis(Spike_width=61, threshold=threshold_gt, template_mode="gamma")
+    np.savetxt('./AutoTH/MaskLabel/'+ file[:-4] + ".txt", mask_label, fmt='%.2f')
+
     pass
 
-GT_info = pd.DataFrame(data=GT_dict, index=[name[:-4] for name in nameList])
-GT_info.to_csv("./AutoTH/" + "GT_info.csv", sep="\t")
+# GT_info = pd.DataFrame(data=GT_dict, index=[name[:-4] for name in nameList])
+# GT_info.to_csv("./AutoTH/" + "GT_info.csv", sep="\t")
 pass

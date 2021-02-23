@@ -88,9 +88,9 @@ class BECTdetect(object):
 
         self.band_pair = self.find_slow_wave(band_ind=band_ind)
 
-        SWI = self.get_SWI(band_pair=self.band_pair)
+        SWI, mask = self.get_SWI(band_pair=self.band_pair)
 
-        return SWI
+        return SWI, mask
         
     def Adaptive_Decomposition(self, Spike_width, template_mode):
         
@@ -179,7 +179,7 @@ class BECTdetect(object):
             mask[ind_pair[0]:ind_pair[1]] = 1
         spike_time = np.sum(mask)
         SWI = spike_time/len(self.data)
-        return SWI
+        return SWI, mask
 
     def _Adaptive_wave(self, Original_wave, data):
         # 小波的尺度根据原始信号的形状做自适应调整
