@@ -13,8 +13,9 @@ def test(dataset_name, epoch):
 
     model_root = './Segmodel'
 
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-    batch_size = 32
+    # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
+    batch_size = 16
 
     """load data"""
     if dataset_name == 'train':

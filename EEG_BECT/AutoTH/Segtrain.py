@@ -13,7 +13,7 @@ from Segtest import test
 
 # 初始化设定
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 
 lr = 1e-3
