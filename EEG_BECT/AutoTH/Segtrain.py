@@ -41,7 +41,9 @@ for epoch in range(n_epoch):
     data_train_iter = iter(dataloader_train)
 
     i = 0
-        
+    
+    loss_all = 0
+
     while i < len(dataloader_train):
 
         data_train = data_train_iter.next()
@@ -56,6 +58,7 @@ for epoch in range(n_epoch):
 
         output = net(x=x_data)
         Loss = loss(output, label)
+        loss_all += Loss.cpu().data.numpy()
         Loss.backward()
         optimizer.step()
 
@@ -65,7 +68,7 @@ for epoch in range(n_epoch):
     
     torch.save({'state_dict': net.state_dict()},'{0}/model_epoch_{1}.pth.tar'.format(model_root, epoch))
 
-    train_loss = test("train", epoch)
+    train_loss = loss_all/len(dataloader_train)
     test_loss = test("test", epoch)
     writer.add_scalars('Loss', {'train_loss': train_loss, 'test_loss':test_loss}, epoch)
     writer.close()
