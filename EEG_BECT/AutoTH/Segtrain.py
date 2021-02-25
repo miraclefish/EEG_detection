@@ -17,8 +17,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 
 lr = 1e-3
-batch_size = 16
-n_epoch = 100
+batch_size = 32
+n_epoch = 500
 model_root = "./Segmodel"
 
 dataset_train = BECTDataset(DataPath='./OrigData', FeaturePath='./MaskLabel', LabelFile='GT_info.csv', type="train", withData=True)

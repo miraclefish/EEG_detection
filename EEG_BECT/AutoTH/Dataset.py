@@ -40,7 +40,7 @@ class BECTDataset(Dataset):
         if self.withData == True:
             data = np.loadtxt(data_path)
             # data = np.sign(data)*np.log(np.abs(data)+1)
-            data = (data - np.mean(data))/np.std(data)
+            # data = (data - np.mean(data))/np.std(data)
             sample["Data"] = torch.from_numpy(data)
 
         return sample

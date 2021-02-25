@@ -15,7 +15,7 @@ def test(dataset_name, epoch):
 
     # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     device = torch.device("cpu")
-    batch_size = 16
+    batch_size = 32
 
     """load data"""
     if dataset_name == 'train':
