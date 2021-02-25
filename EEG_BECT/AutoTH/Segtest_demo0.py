@@ -12,9 +12,11 @@ def find_index_pair(label):
     index_E = np.where(d_label==-1)[0]
 
     if index_E[0] < index_S[0]:
-        index_S.insert(0, -1)
-    elif index_S[-1] > index_E[-1]:
-        index_E.append(len(d_label))
+        index_S = np.insert(index_S, 0, -1)
+        print("SS")
+    if index_S[-1] > index_E[-1]:
+        index_E = np.append(index_E, len(d_label))
+        print("EE")
     
     assert len(index_S)==len(index_E)
     index_pair = [np.array([[start, end]]) for start, end in zip(index_S, index_E)]
@@ -55,6 +57,7 @@ def test_demo(net, data_type, num):
 
     x, label = getdata(type=data_type, num=num)
     data = x.cpu().data.numpy()
+    data = np.squeeze(data)
     label = label.cpu().data.numpy()
 
     net = net.to(device)
@@ -70,22 +73,22 @@ def test_demo(net, data_type, num):
     label_index_pair = find_index_pair(label)
     pred_index_pair = find_index_pair(pred)
 
-    fig, ax = plt.subplots(figsize=(15,5))
-    ax.subplot(3,1,1)
-    ax.plot(data)
-    ax.title("Original data")
+    fig = plt.figure(figsize=(15,5))
+    plt.subplot(3,1,1)
+    plt.plot(data)
+    plt.title("Original data")
 
-    ax.subplot(3,1,2)
-    ax.plot(data)
+    plt.subplot(3,1,2)
+    plt.plot(data)
     for ind in label_index_pair:
         plt.plot(np.arange(ind[0], ind[1]), data[ind[0]:ind[1]],c="r")
-    ax.title("BECT label segment")
+    plt.title("BECT label segment")
 
-    ax.subplot(3,1,3)
-    ax.plot(data)
+    plt.subplot(3,1,3)
+    plt.plot(data)
     for ind in pred_index_pair:
         plt.plot(np.arange(ind[0], ind[1]), data[ind[0]:ind[1]],c="g")
-    ax.title("BECT pred segment")
+    plt.title("BECT pred segment")
 
     # print('epoch: %d, loss of the %s dataset: %f' % (epoch, dataset_name, mse))
 
@@ -94,6 +97,6 @@ def test_demo(net, data_type, num):
     return None
 
 if __name__ == "__main__":
-    net = inital_net(model_root='./Segmodel', epoch=0)
+    net = inital_net(model_root='./Segmodel', epoch=495)
     test_demo(net=net, data_type='test', num=1)
     pass
