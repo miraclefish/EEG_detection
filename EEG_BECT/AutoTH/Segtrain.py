@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -19,7 +20,9 @@ print("<<<<<<<<Device: ", device," >>>>>>>>>>>")
 lr = 1e-3
 batch_size = 32
 n_epoch = 500
-model_root = "./Segmodel"
+s_epoch = 0
+RESUME = False
+model_root = "./Segmodel1"
 
 dataset_train = BECTDataset(DataPath='./OrigData', FeaturePath='./MaskLabel', LabelFile='GT_info.csv', type="train", withData=True)
 dataloader_train = DataLoader(dataset=dataset_train, batch_size=batch_size, shuffle=True)
@@ -37,7 +40,14 @@ loss = nn.CrossEntropyLoss()
 net = net.to(device)
 loss = loss.to(device)
 
-for epoch in range(n_epoch):
+if RESUME:
+    path_checkpoint = '{0}/model_epoch_{1}.pth.tar'.format(model_root, s_epoch)
+    checkpoint = torch.load(path_checkpoint)
+    net.load_state_dict(checkpoint['net'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    s_epoch = checkpoint['epoch']
+
+for epoch in range(s_epoch+1, n_epoch):
     data_train_iter = iter(dataloader_train)
 
     i = 0
@@ -66,7 +76,15 @@ for epoch in range(n_epoch):
         print('epoch: %d, [iter: %d / all %d], loss : %f' \
               % (epoch, i, len(dataloader_train), Loss.cpu().data.numpy()))
     
-    torch.save({'state_dict': net.state_dict()},'{0}/model_epoch_{1}.pth.tar'.format(model_root, epoch))
+    # save_checkpoint_state(model_root, epoch, model=net, optimizer)
+    checkpoint = {
+            "net": net.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            "epoch": epoch,
+        }
+    if not os.path.isdir(model_root):
+        os.mkdir(model_root)
+    torch.save(checkpoint,'{0}/model_epoch_{1}.pth.tar'.format(model_root, epoch))
 
     train_loss = loss_all/len(dataloader_train)
     test_loss = test("test", epoch)

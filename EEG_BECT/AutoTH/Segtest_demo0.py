@@ -13,10 +13,8 @@ def find_index_pair(label):
 
     if index_E[0] < index_S[0]:
         index_S = np.insert(index_S, 0, -1)
-        print("SS")
     if index_S[-1] > index_E[-1]:
         index_E = np.append(index_E, len(d_label))
-        print("EE")
     
     assert len(index_S)==len(index_E)
     index_pair = [np.array([[start, end]]) for start, end in zip(index_S, index_E)]
@@ -28,7 +26,7 @@ def inital_net(model_root, epoch=0):
 
     net = SignalSegNet(Basicblock, [2,2,2,2,2])
     checkpoint = torch.load(os.path.join(model_root, 'model_epoch_'+str(epoch)+'.pth.tar'))
-    net.load_state_dict(checkpoint['state_dict'])
+    net.load_state_dict(checkpoint['net'])
     net = net.eval()
 
     return net
@@ -97,6 +95,6 @@ def test_demo(net, data_type, num):
     return None
 
 if __name__ == "__main__":
-    net = inital_net(model_root='./Segmodel', epoch=495)
+    net = inital_net(model_root='./Segmodel1', epoch=495)
     test_demo(net=net, data_type='test', num=1)
     pass

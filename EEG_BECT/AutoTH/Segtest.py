@@ -11,7 +11,7 @@ def test(dataset_name, epoch):
 
     assert dataset_name in ['train', 'test']
 
-    model_root = './Segmodel'
+    model_root = './Segmodel1'
 
     # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     device = torch.device("cpu")
@@ -29,7 +29,7 @@ def test(dataset_name, epoch):
 
     net = SignalSegNet(Basicblock, [2,2,2,2,2])
     checkpoint = torch.load(os.path.join(model_root, 'model_epoch_'+str(epoch)+'.pth.tar'))
-    net.load_state_dict(checkpoint['state_dict'])
+    net.load_state_dict(checkpoint['net'])
 
     net = net.eval()
 
